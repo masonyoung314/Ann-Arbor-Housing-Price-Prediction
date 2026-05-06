@@ -21,6 +21,36 @@ def impute_missing_values(X: npt.NDArray) -> npt.NDArray:
 
     return X
 
+
+# Impute target value of rows with incorrect prices or no price
+def cleanup_weird_vals(arr: npt.NDArray) -> npt.NDArray:
+    # If this doesn't work well, then I will consider dropping these rows and checking for model improvement
+    mean = np.nanmean(arr[:, 0])
+
+    arr[pd.isnull(arr[:, 0])] = mean
+    arr[arr[:, 0] < 50000] = mean
+
+    return arr
+
+def get_feature_vectors(df: pd.DataFrame) -> pd.DataFrame:
+
+    return df
+
+
+
+
+# def get_data() -> tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
+#     housing = impute_missing_values(housing)
+
+#     X 
+#     X_train, X_test, y_train, y_test = train_test_split(
+#         X,
+#         y,
+#         test_size=0.2
+#     )
+
+#     return X_train, X_test, y_train, y_test 
+
 def main():
 
 
@@ -28,14 +58,20 @@ def main():
 
 
     housing = housing_pd.to_numpy()
-    print(housing_pd)
+    # print(housing_pd)
+    cleanup_weird_vals(housing)
 
-    print(housing_pd.isna().sum())
+    # print(f"# houses with missing price: {np.sum(pd.isnull(housing[:, 0]))}")
+    # print(f"# houses with price < 5000: {np.size(np.where(housing[:, 0] < 5000))}")
+    # print(f"# houses with price < 20000: {np.size(np.where(housing[:, 0] < 20000))}")
+    # print(f"# houses with price < 50000: {np.size(np.where(housing[:, 0] < 50000))}")
+
+    # with np.printoptions(threshold=np.inf):
+    #     print(housing[housing[:, 0] < 50000])
 
 
-    housing = impute_missing_values(housing)
+    # print(housing_pd.isna().sum())
 
-    print(housing)
 
 
 if __name__ == "__main__":
