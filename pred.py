@@ -4,6 +4,7 @@ import xgboost as xgb
 import numpy as np
 import numpy.typing as npt
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
 
 
 
@@ -37,19 +38,27 @@ def get_feature_vectors(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def normalize_feature_matrix(X: npt.NDArray) -> npt.NDArray:
+    # Normalize the feature matrix
+    
+    scaler = MinMaxScaler()
+    scaler.fit(X)
+    X = scaler.transform(X)
+    return X
 
 
-# def get_data() -> tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
-#     housing = impute_missing_values(housing)
 
-#     X 
-#     X_train, X_test, y_train, y_test = train_test_split(
-#         X,
-#         y,
-#         test_size=0.2
-#     )
+def get_data(X: npt.NDArray, y: npt.NDArray) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
+    housing = impute_missing_values(housing)
 
-#     return X_train, X_test, y_train, y_test 
+    X 
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2
+    )
+
+    return X_train, X_test, y_train, y_test 
 
 def main():
 
@@ -59,7 +68,9 @@ def main():
 
     housing = housing_pd.to_numpy()
     # print(housing_pd)
-    cleanup_weird_vals(housing)
+    housing = cleanup_weird_vals(housing)
+
+    X_train, X_test, y_train, y_test = get_data(housing)
 
     # print(f"# houses with missing price: {np.sum(pd.isnull(housing[:, 0]))}")
     # print(f"# houses with price < 5000: {np.size(np.where(housing[:, 0] < 5000))}")
