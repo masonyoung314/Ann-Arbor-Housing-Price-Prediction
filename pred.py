@@ -8,6 +8,14 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import RepeatedKFold
 from sklearn.model_selection import cross_val_score
 import random
+import matplotlib.pylab as plt
+
+# TODO: Try a neural network on this problem
+# TODO: Try logist regression on this problem
+
+def graph_data(data: npt.NDArray):
+    plt.plot(data[:, 3], data[:, 0], 'o')
+    plt.show()
 
 # Convert year-month-day to float of seconds since 1970
 def date_to_float(df: pd.DataFrame) -> pd.DataFrame:
@@ -43,7 +51,7 @@ def cleanup_weird_vals(y: npt.NDArray) -> npt.NDArray:
 
 def get_feature_vectors(df: pd.DataFrame) -> pd.DataFrame:
     df = df[["sale_date","beds","full_baths","half_baths","sqft","acres","lat","long"]]
-    print(df)
+    # print(df)
     return df
 
 
@@ -137,7 +145,9 @@ def main():
     housing_pd = pd.read_csv("./housing.csv")
 
 
-    # housing = housing_pd.to_numpy()
+    housing = housing_pd.to_numpy()
+    print(housing)
+    graph_data(housing)
     # print(housing_pd)
     # housing = cleanup_weird_vals(housing)
     housing_pd = date_to_float(housing_pd)
@@ -162,15 +172,17 @@ def main():
 
     # print_score_info(scores, rmse_scores)
 
-    depth, learning_rate, subsample, colsample = find_best_model(X, y)
+    # depth, learning_rate, subsample, colsample = find_best_model(X, y)
 
-    best_model = xgb.XGBRegressor(n_estimators=1000, max_depth=depth, eta=learning_rate, subsample=subsample, colsample_bytree=colsample)
+    # best_model = xgb.XGBRegressor(n_estimators=1000, max_depth=depth, eta=learning_rate, subsample=subsample, colsample_bytree=colsample)
 
-    cv = RepeatedKFold(n_splits=5, n_repeats=3, random_state=42)
+    # cv = RepeatedKFold(n_splits=5, n_repeats=3, random_state=42)
 
-    scores = cross_val_score(best_model, X, y, cv=cv, scoring='r2')
-    rmse_scores = -cross_val_score(best_model, X, y, cv=cv, scoring='neg_root_mean_squared_error')
-    print_score_info(scores, rmse_scores)
+    # scores = cross_val_score(best_model, X, y, cv=cv, scoring='r2')
+    # rmse_scores = -cross_val_score(best_model, X, y, cv=cv, scoring='neg_root_mean_squared_error')
+    # print_score_info(scores, rmse_scores)
+
+    
 
 
 if __name__ == "__main__":
