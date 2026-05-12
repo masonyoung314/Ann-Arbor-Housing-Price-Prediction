@@ -1,5 +1,7 @@
 import pandas as pd
 import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, Dataset
 import xgboost as xgb
 import numpy as np
 import numpy.typing as npt
@@ -10,8 +12,39 @@ from sklearn.model_selection import cross_val_score
 import random
 import matplotlib.pylab as plt
 
+
 # TODO: Try a neural network on this problem
 # TODO: Try logist regression on this problem
+
+class Data(Dataset):
+    def __init__(self, X, y):
+        self.X = torch.from_numpy(X)
+        self.y = torch.from_numpy(y)
+        self.len = self.X.shape[0]
+
+    def __getitem__(self, index):
+        return self.X[index], self.y[index]
+    def __len__(self):
+        return self.len
+
+class NeuralNet(nn.Module):
+    def __init__(self, inputDim, hiddenDim, outputDim)-> None:
+        super(NeuralNet, self).__init__()
+        self.fc1 = nn.Linear(inputDim, hiddenDim)
+        self.fc2 = nn.Linear(hiddenDim, outputDim)
+    
+    def init_weights(self) -> None:
+
+        for layer in [self.fc1, self.fc2]:
+            nn.init.kaiming_normal_(layer.weight, nonlinearity="reul")
+            nn.init.zeros_(layer.bias)
+
+    def forward(self, x) -> torch.Tensor:
+        x = self.fc1(x)
+        x = nn.functional.relu(x)
+        x = self.fc2(x)
+
+        return x
 
 def graph_data(data: npt.NDArray):
     plt.plot(data[:, 3], data[:, 0], 'o')
@@ -65,21 +98,23 @@ def normalize_feature_matrix(X: npt.NDArray) -> npt.NDArray:
 
 
 
-def get_data(X: npt.NDArray, y: npt.NDArray) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
+def get_data(X: npt.NDArray, y: npt.NDArray) -> tuple[npt.NDArray, npt.NDArray]:
     X = impute_missing_values(X)
     X = normalize_feature_matrix(X)
 
     y = cleanup_weird_vals(y)
 
-    # X_train, X_test, y_train, y_test = train_test_split(
-    #     X,
-    #     y,
-    #     test_size=0.2
-    # )
-
-    # return X_train, X_test, y_train, y_test 
-
     return X, y
+
+def get_splits_nn(X: npt.NDArray, y: npt.NDArray) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
+    X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            test_size=0.2
+        )
+
+    return X_train, X_test, y_train, y_test 
+
 
 def print_score_info(scores, rmse_scores):
     print(f"Scores raw values: {scores}")
@@ -100,7 +135,8 @@ def find_best_model(X, y):
 
     best_combination = None
     best_mean = None
-    
+
+    # Chooses 20 random combination of the features to approximate optimal model while being more computationally efficient
     for i in range(0, 21):
         depth = random.choice(max_depths)
         learning_rate = random.choice(learning_rates)
@@ -115,6 +151,8 @@ def find_best_model(X, y):
             best_combination = depth, learning_rate, subsample, colsample
             best_mean = scores.mean()
 
+
+    # Calculates every combination
     # for max_depth in max_depths:
     #     for learning_rate in learning_rates:
     #         for subsample in subsamples:
@@ -136,8 +174,40 @@ def find_best_model(X, y):
 
     return best_combination[0], best_combination[1], best_combination[2], best_combination[3]
 
+def visualize_training(loss_vals):
+    step = range(len(loss_vals))
+    fig, ax = plt.subplots(figsize=(8, 5))
+    plt.plot(step, np.array(loss_vals))
+    plt.title("Loss at Each Epoch")
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.show()
 
 
+def train_nn(model, train_dataLoader, learning_rate):
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), learning_rate, weight_decay=0.01)
+
+    epochs = 100
+    loss_vals = []
+
+    for epoch in range(epochs):
+        epoch_loss_vals = []
+        for X, y in train_dataLoader:
+            X = X.float()
+            y = y.float()
+
+            optimizer.zero_grad()
+            pred = model(X)
+            loss = criterion(pred, y.unsqueeze(-1))
+            print(f"Epoch: {epoch}")
+            print(f"Loss: {loss}")
+            epoch_loss_vals.append(loss)
+            loss.backward()
+            optimizer.step()
+
+        loss_vals.append(epoch_loss_vals)
+    visualize_training(loss_vals)
 
 def main():
 
@@ -147,14 +217,13 @@ def main():
 
     housing = housing_pd.to_numpy()
     print(housing)
-    graph_data(housing)
+    # graph_data(housing)
     # print(housing_pd)
     # housing = cleanup_weird_vals(housing)
     housing_pd = date_to_float(housing_pd)
     X = get_feature_vectors(housing_pd).to_numpy()
     y = housing_pd["sale_price"].to_numpy()
 
-    # X_train, X_test, y_train, y_test = get_data(X, y)
     X, y = get_data(X, y)
 
     # mdl = xgb.XGBRegressor(n_estimators=200, max_depth=7, eta=0.1, subsample=0.7, colsample_bytree=0.8)
@@ -181,6 +250,40 @@ def main():
     # scores = cross_val_score(best_model, X, y, cv=cv, scoring='r2')
     # rmse_scores = -cross_val_score(best_model, X, y, cv=cv, scoring='neg_root_mean_squared_error')
     # print_score_info(scores, rmse_scores)
+
+
+    X_train, X_test, y_train, y_test = get_splits_nn(X, y)
+
+    batch_size = 32
+
+    train_data = Data(X_train, y_train)
+    train_dataLoader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
+
+    test_data = Data(X_test, y_test)
+    test_dataLoader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
+
+    # Test to make sure splits are correct
+    # for batch, (X, y) in enumerate(train_dataLoader):
+    #     print(f"Batch: {batch+1}")
+    #     print(f"X shape: {X.shape}")
+    #     print(f"y shape: {y.shape}")
+    #     break
+
+
+
+
+    input_dim = 8
+    hidden_dim = 32
+    output_dim = 1
+    learning_rate = 0.1
+    
+    neuralModel = NeuralNet(input_dim, hidden_dim, output_dim)
+
+    train_nn(neuralModel, train_dataLoader, learning_rate)
+
+
+
+
 
     
 
