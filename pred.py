@@ -179,7 +179,7 @@ def visualize_training(loss_vals):
 
 
 def train_nn(model, train_dataLoader, learning_rate):
-    criterion = nn.MSELoss()
+    criterion = nn.HuberLoss()
     optimizer = torch.optim.Adam(model.parameters(), learning_rate, weight_decay=0.01)
 
     epochs = 100
