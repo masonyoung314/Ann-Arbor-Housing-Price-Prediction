@@ -28,10 +28,11 @@ class Data(Dataset):
         return self.len
 
 class NeuralNet(nn.Module):
-    def __init__(self, inputDim, hiddenDim, outputDim)-> None:
+    def __init__(self, inputDim, hiddenDim, secondHiddenDim, outputDim)-> None:
         super(NeuralNet, self).__init__()
         self.fc1 = nn.Linear(inputDim, hiddenDim)
-        self.fc2 = nn.Linear(hiddenDim, outputDim)
+        self.fc2 = nn.Linear(hiddenDim, secondHiddenDim)
+        self.fc3 = nn.Linear(secondHiddenDim, outputDim)
     
     def init_weights(self) -> None:
 
@@ -43,6 +44,8 @@ class NeuralNet(nn.Module):
         x = self.fc1(x)
         x = nn.functional.relu(x)
         x = self.fc2(x)
+        x = nn.functional.relu(x)
+        x = self.fc3(x)
 
         return x
 
@@ -182,7 +185,7 @@ def train_nn(model, train_dataLoader, learning_rate):
     criterion = nn.HuberLoss()
     optimizer = torch.optim.Adam(model.parameters(), learning_rate, weight_decay=0.01)
 
-    epochs = 100
+    epochs = 400
     loss_vals = []
 
     for epoch in range(epochs):
@@ -306,11 +309,12 @@ def main():
 
 
     input_dim = 8
-    hidden_dim = 32
+    hidden_dim = 128
+    second_hidden_dim = 64
     output_dim = 1
     learning_rate = 0.1
     
-    neuralModel = NeuralNet(input_dim, hidden_dim, output_dim)
+    neuralModel = NeuralNet(input_dim, hidden_dim, second_hidden_dim, output_dim)
 
     model = train_nn(neuralModel, train_dataLoader, learning_rate)
 
