@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import RepeatedKFold
 from sklearn.model_selection import cross_val_score
+from sklearn.metrics import r2_score
 import random
 import matplotlib.pylab as plt
 
@@ -113,13 +114,14 @@ def get_splits_nn(X: npt.NDArray, y: npt.NDArray) -> tuple[npt.NDArray, npt.NDAr
     return X_train, X_test, y_train, y_test 
 
 
-def print_score_info(scores, rmse_scores):
-    print(f"Scores raw values: {scores}")
+def print_score_info(scores, rmse_scores, mae_scores):
+    print(f"Avg. R^2: {scores}")
     print(f"Mean of scores: {scores.mean()}")
     print(f"Standard deviation of scores: {scores.std()}")
 
-    print(f"Mean of RMSE scores: {rmse_scores.mean()}")
+    print(f"Avg. RMSE score: {rmse_scores.mean()}")
     print(f"Standard devation of RMSE scores: {rmse_scores.std()}")
+    print(f"Avg. MAE score: {mae_scores.mean()}")
 
 def find_best_model(X, y):
     # Randomized grid search to find best XGBRegressor hyperparameters
@@ -185,7 +187,7 @@ def train_nn(model, train_dataLoader, learning_rate):
     criterion = nn.HuberLoss()
     optimizer = torch.optim.Adam(model.parameters(), learning_rate, weight_decay=0.01)
 
-    epochs = 100
+    epochs = 200
     loss_vals = []
 
     for epoch in range(epochs):
@@ -213,6 +215,7 @@ def evaluate_nn(model, test_dataLoader):
     # Write some code to test the predictions of model on unseen data
     y_actual = []
     y_pred = []
+    n = 0
 
     with torch.no_grad():
         for X, y in test_dataLoader:
@@ -223,6 +226,7 @@ def evaluate_nn(model, test_dataLoader):
 
             y_pred.append(pred)
             y_actual.append(y)
+            n += 1
 
     y_actual = torch.cat(y_actual).detach().numpy()
     y_pred = torch.cat(y_pred).detach().numpy()
@@ -230,12 +234,21 @@ def evaluate_nn(model, test_dataLoader):
     y_pred = np.expm1(y_pred)
     y_actual = np.expm1(y_actual)
 
+    mse = (1 / n) * np.sum((y_actual - y_pred)**2)
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y_actual, y_pred)
+
+    print(f"RMSE: {rmse}")
+    print(f"House predictions are typically about ${rmse} away from the actual house price.")
+    print(f"R^2: {r2}")
+
     plt.plot([y_actual.min(), y_actual.max()], [y_actual.min(), y_actual.max()], '--')
     plt.plot(y_actual, y_pred, 'o')
     plt.xlabel("Actual House Prices")
     plt.ylabel("Predicted House Prices")
     plt.title("Actual House Prices vs. Predict House Prices")
     plt.show()
+
 
 def main():
 
@@ -253,6 +266,7 @@ def main():
     y = housing_pd["sale_price"].to_numpy()
 
     X, y = get_data(X, y)
+    # y = transform_y_vals(y)
 
     # mdl = xgb.XGBRegressor(n_estimators=200, max_depth=7, eta=0.1, subsample=0.7, colsample_bytree=0.8)
 
@@ -266,59 +280,61 @@ def main():
     #     scoring='neg_root_mean_squared_error',
     #     cv=cv
     # )
+    # mae_scores = -cross_val_score(mdl, X, y, cv=cv, scoring="neg_mean_absolute_error")
 
-    # print_score_info(scores, rmse_scores)
+    # print_score_info(scores, rmse_scores, mae_scores)
 
-    # depth, learning_rate, subsample, colsample = find_best_model(X, y)
+    depth, learning_rate, subsample, colsample = find_best_model(X, y)
 
-    # best_model = xgb.XGBRegressor(n_estimators=1000, max_depth=depth, eta=learning_rate, subsample=subsample, colsample_bytree=colsample)
+    best_model = xgb.XGBRegressor(n_estimators=1000, max_depth=depth, eta=learning_rate, subsample=subsample, colsample_bytree=colsample)
 
-    # cv = RepeatedKFold(n_splits=5, n_repeats=3, random_state=42)
+    cv = RepeatedKFold(n_splits=5, n_repeats=3, random_state=42)
 
-    # scores = cross_val_score(best_model, X, y, cv=cv, scoring='r2')
-    # rmse_scores = -cross_val_score(best_model, X, y, cv=cv, scoring='neg_root_mean_squared_error')
-    # print_score_info(scores, rmse_scores)
-
-
-    X_train, X_test, y_train, y_test = get_splits_nn(X, y)
-
-    # Standardize X values 
-    scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train)
-    X_test = scaler.transform(X_test)
-    # Log transform y_values 
-    y_train = transform_y_vals(y_train)
-    y_test = transform_y_vals(y_test)
-
-    batch_size = 32
-
-    train_data = Data(X_train, y_train)
-    train_dataLoader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
-
-    test_data = Data(X_test, y_test)
-    test_dataLoader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
-
-    # Test to make sure splits are correct
-    # for batch, (X, y) in enumerate(train_dataLoader):
-    #     print(f"Batch: {batch+1}")
-    #     print(f"X shape: {X.shape}")
-    #     print(f"y shape: {y.shape}")
-    #     break
+    scores = cross_val_score(best_model, X, y, cv=cv, scoring='r2')
+    rmse_scores = -cross_val_score(best_model, X, y, cv=cv, scoring='neg_root_mean_squared_error')
+    mae_scores = -cross_val_score(best_model, X, y, cv=cv, scoring='neg_mean_absolute_error')
+    print_score_info(scores, rmse_scores, mae_scores)
 
 
+    # X_train, X_test, y_train, y_test = get_splits_nn(X, y)
+
+    # # Standardize X values 
+    # scaler = StandardScaler()
+    # X_train = scaler.fit_transform(X_train)
+    # X_test = scaler.transform(X_test)
+    # # Log transform y_values 
+    # y_train = transform_y_vals(y_train)
+    # y_test = transform_y_vals(y_test)
+
+    # batch_size = 32
+
+    # train_data = Data(X_train, y_train)
+    # train_dataLoader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
+
+    # test_data = Data(X_test, y_test)
+    # test_dataLoader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
+
+    # # Test to make sure splits are correct
+    # # for batch, (X, y) in enumerate(train_dataLoader):
+    # #     print(f"Batch: {batch+1}")
+    # #     print(f"X shape: {X.shape}")
+    # #     print(f"y shape: {y.shape}")
+    # #     break
 
 
-    input_dim = 8
-    hidden_dim = 128
-    second_hidden_dim = 64
-    output_dim = 1
-    learning_rate = 0.001
+
+
+    # input_dim = 8
+    # hidden_dim = 128
+    # second_hidden_dim = 64
+    # output_dim = 1
+    # learning_rate = 0.001
     
-    neuralModel = NeuralNet(input_dim, hidden_dim, second_hidden_dim, output_dim)
+    # neuralModel = NeuralNet(input_dim, hidden_dim, second_hidden_dim, output_dim)
 
-    model = train_nn(neuralModel, train_dataLoader, learning_rate)
+    # model = train_nn(neuralModel, train_dataLoader, learning_rate)
 
-    evaluate_nn(model, test_dataLoader)
+    # evaluate_nn(model, test_dataLoader)
 
 
 
