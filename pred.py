@@ -37,7 +37,7 @@ class NeuralNet(nn.Module):
     def init_weights(self) -> None:
 
         for layer in [self.fc1, self.fc2]:
-            nn.init.kaiming_normal_(layer.weight, nonlinearity="reul")
+            nn.init.kaiming_normal_(layer.weight, nonlinearity="relu")
             nn.init.zeros_(layer.bias)
 
     def forward(self, x) -> torch.Tensor:
@@ -185,7 +185,7 @@ def train_nn(model, train_dataLoader, learning_rate):
     criterion = nn.HuberLoss()
     optimizer = torch.optim.Adam(model.parameters(), learning_rate, weight_decay=0.01)
 
-    epochs = 400
+    epochs = 100
     loss_vals = []
 
     for epoch in range(epochs):
@@ -312,7 +312,7 @@ def main():
     hidden_dim = 128
     second_hidden_dim = 64
     output_dim = 1
-    learning_rate = 0.1
+    learning_rate = 0.001
     
     neuralModel = NeuralNet(input_dim, hidden_dim, second_hidden_dim, output_dim)
 
