@@ -192,21 +192,22 @@ def train_nn(model, train_dataLoader, learning_rate):
     loss_vals = []
 
     for epoch in range(epochs):
-        epoch_loss_vals = []
+        epoch_loss = 0
         for X, y in train_dataLoader:
             X = X.float()
             y = y.float()
-
             optimizer.zero_grad()
             pred = model(X)
             loss = criterion(pred, y.unsqueeze(-1))
             print(f"Epoch: {epoch}")
             print(f"Loss: {loss}")
-            epoch_loss_vals.append(loss)
             loss.backward()
             optimizer.step()
 
-        loss_vals.append(epoch_loss_vals)
+            epoch_loss += loss.item()
+
+        avg_loss = epoch_loss / len(train_dataLoader)
+        loss_vals.append(avg_loss)
     visualize_training(loss_vals)
 
 def main():
