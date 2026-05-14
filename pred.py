@@ -210,6 +210,32 @@ def train_nn(model, train_dataLoader, learning_rate):
         loss_vals.append(avg_loss)
     visualize_training(loss_vals)
 
+    return model
+
+def evaluate_nn(model, test_dataLoader):
+    # Write some code to test the predictions of model on unseen data
+    y_actual = []
+    y_pred = []
+
+    with torch.no_grad():
+        for X, y in test_dataLoader:
+            X = X.float()
+            y = y.float()
+
+            pred = model(X)
+
+            y_pred.append(pred)
+            y_actual.append(y)
+
+    y_actual = torch.cat(y_actual).detach().numpy()
+    y_pred = torch.cat(y_pred).detach().numpy()
+
+    plt.plot(y_actual, y_pred, 'o')
+    plt.xlabel("Actual House Prices")
+    plt.ylabel("Predicted House Prices")
+    plt.title("Actual House Prices vs. Predict House Prices")
+    plt.show()
+
 def main():
 
 
@@ -280,9 +306,9 @@ def main():
     
     neuralModel = NeuralNet(input_dim, hidden_dim, output_dim)
 
-    train_nn(neuralModel, train_dataLoader, learning_rate)
+    model = train_nn(neuralModel, train_dataLoader, learning_rate)
 
-
+    evaluate_nn(model, test_dataLoader)
 
 
 
