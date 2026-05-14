@@ -6,7 +6,7 @@ import xgboost as xgb
 import numpy as np
 import numpy.typing as npt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import RepeatedKFold
 from sklearn.model_selection import cross_val_score
 import random
@@ -88,19 +88,13 @@ def get_feature_vectors(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def normalize_feature_matrix(X: npt.NDArray) -> npt.NDArray:
-    # Normalize the feature matrix
-
-    scaler = MinMaxScaler()
-    scaler.fit(X)
-    X = scaler.transform(X)
-    return X
-
+def transform_y_vals(y: npt.NDArray) -> npt.NDArray:
+    return np.log1p(y)
 
 
 def get_data(X: npt.NDArray, y: npt.NDArray) -> tuple[npt.NDArray, npt.NDArray]:
     X = impute_missing_values(X)
-    X = normalize_feature_matrix(X)
+    # X = normalize_feature_matrix(X)
 
     y = cleanup_weird_vals(y)
 
@@ -230,6 +224,10 @@ def evaluate_nn(model, test_dataLoader):
     y_actual = torch.cat(y_actual).detach().numpy()
     y_pred = torch.cat(y_pred).detach().numpy()
 
+    y_pred = np.expm1(y_pred)
+    y_actual = np.expm1(y_actual)
+
+    plt.plot([y_actual.min(), y_actual.max()], [y_actual.min(), y_actual.max()], '--')
     plt.plot(y_actual, y_pred, 'o')
     plt.xlabel("Actual House Prices")
     plt.ylabel("Predicted House Prices")
@@ -280,6 +278,14 @@ def main():
 
 
     X_train, X_test, y_train, y_test = get_splits_nn(X, y)
+
+    # Standardize X values 
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+    # Log transform y_values 
+    y_train = transform_y_vals(y_train)
+    y_test = transform_y_vals(y_test)
 
     batch_size = 32
 
