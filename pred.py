@@ -10,9 +10,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import RepeatedKFold
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import r2_score
+from sklearn.base import clone
 import random
 import matplotlib.pylab as plt
-
 
 # TODO: Try a neural network on this problem
 # TODO: Try logist regression on this problem
@@ -115,8 +115,7 @@ def get_splits_nn(X: npt.NDArray, y: npt.NDArray) -> tuple[npt.NDArray, npt.NDAr
 
 
 def print_score_info(scores, rmse_scores, mae_scores):
-    print(f"Avg. R^2: {scores}")
-    print(f"Mean of scores: {scores.mean()}")
+    print(f"Avg. R^2: {scores.mean()}")
     print(f"Standard deviation of scores: {scores.std()}")
 
     print(f"Avg. RMSE score: {rmse_scores.mean()}")
@@ -250,6 +249,47 @@ def evaluate_nn(model, test_dataLoader):
     plt.show()
 
 
+# Predict on kth fold's test dataset and return r2 value for that fold
+def eval_performance(model_trained, X_test, y_test):
+    n = len(X_test)
+    y_pred = model_trained.predict(X_test)
+    r2 = r2_score(y_test, y_pred)
+    mse = (1 / n) * np.sum((y_test - y_pred)**2)
+    rmse = np.sqrt(mse)
+    mae = (1 / n) * np.sum(np.abs((y_test - y_pred)))
+
+    return r2, rmse, mae
+
+
+    
+
+def kfolds(model, X, y, k):
+
+    folds = RepeatedKFold(n_splits=k, n_repeats=10, random_state=42)
+
+    r2Perf = []
+    rmsePerf = []
+    maePerf = []
+
+
+    for i, (train_index, test_index) in enumerate(folds.split(X, y)):
+        X_train = X[train_index]
+        y_train = y[train_index]
+        m = clone(model)
+        m.fit(X_train, y_train)
+        X_test = X[test_index]
+        y_test = y[test_index]
+
+        r2, rmse, mae = eval_performance(m, X_test, y_test)
+        r2Perf.append(r2)
+        rmsePerf.append(rmse)
+        maePerf.append(mae)
+
+    return np.array(r2Perf), np.array(rmsePerf), np.array(maePerf)
+
+
+
+
 def main():
 
 
@@ -284,16 +324,21 @@ def main():
 
     # print_score_info(scores, rmse_scores, mae_scores)
 
-    depth, learning_rate, subsample, colsample = find_best_model(X, y)
+    # depth, learning_rate, subsample, colsample = find_best_model(X, y)
+    depth = 7
+    learning_rate = 0.1
+    subsample = 1
+    colsample = 0.7
 
-    best_model = xgb.XGBRegressor(n_estimators=1000, max_depth=depth, eta=learning_rate, subsample=subsample, colsample_bytree=colsample)
+    best_model = xgb.XGBRegressor(n_estimators=100, max_depth=depth, eta=learning_rate, subsample=subsample, colsample_bytree=colsample)
 
-    cv = RepeatedKFold(n_splits=5, n_repeats=3, random_state=42)
+    # cv = RepeatedKFold(n_splits=5, n_repeats=3, random_state=42)
 
-    scores = cross_val_score(best_model, X, y, cv=cv, scoring='r2')
-    rmse_scores = -cross_val_score(best_model, X, y, cv=cv, scoring='neg_root_mean_squared_error')
-    mae_scores = -cross_val_score(best_model, X, y, cv=cv, scoring='neg_mean_absolute_error')
-    print_score_info(scores, rmse_scores, mae_scores)
+    # r2_scores = cross_val_score(best_model, X, y, cv=cv, scoring='r2')
+    # rmse_scores = -cross_val_score(best_model, X, y, cv=cv, scoring='neg_root_mean_squared_error')
+    # mae_scores = -cross_val_score(best_model, X, y, cv=cv, scoring='neg_mean_absolute_error')
+    r2_scores, rmse_scores, mae_scores = kfolds(best_model, X, y, 5)
+    print_score_info(r2_scores, rmse_scores, mae_scores)
 
 
     # X_train, X_test, y_train, y_test = get_splits_nn(X, y)
