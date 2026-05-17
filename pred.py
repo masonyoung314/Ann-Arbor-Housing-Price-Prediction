@@ -252,7 +252,11 @@ def evaluate_nn(model, test_dataLoader):
 # Predict on kth fold's test dataset and return r2 value for that fold
 def eval_performance(model_trained, X_test, y_test):
     n = len(X_test)
-    y_pred = model_trained.predict(X_test)
+
+    y_pred_log = model_trained.predict(X_test)
+    # Convert back to normal house prices
+    y_pred = np.expm1(y_pred_log)
+
     r2 = r2_score(y_test, y_pred)
     mse = (1 / n) * np.sum((y_test - y_pred)**2)
     rmse = np.sqrt(mse)
@@ -275,8 +279,13 @@ def kfolds(model, X, y, k):
     for i, (train_index, test_index) in enumerate(folds.split(X, y)):
         X_train = X[train_index]
         y_train = y[train_index]
+
+        # log transform y_train to control for outliers
+        y_train = np.log1p(y_train)
+
         m = clone(model)
         m.fit(X_train, y_train)
+
         X_test = X[test_index]
         y_test = y[test_index]
 
