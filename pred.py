@@ -250,7 +250,7 @@ def evaluate_nn(model, test_dataLoader):
 
 
 # Predict on kth fold's test dataset and return r2 value for that fold
-def eval_performance(model_trained, X_test, y_test):
+def eval_performance(model_trained, X_test, y_test, visualize=False):
     n = len(X_test)
 
     y_pred_log = model_trained.predict(X_test)
@@ -261,6 +261,14 @@ def eval_performance(model_trained, X_test, y_test):
     mse = (1 / n) * np.sum((y_test - y_pred)**2)
     rmse = np.sqrt(mse)
     mae = (1 / n) * np.sum(np.abs((y_test - y_pred)))
+
+    if visualize:
+        plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], '--')
+        plt.plot(y_test, y_pred, 'o')
+        plt.xlabel("Actual House Prices")
+        plt.ylabel("Predicted House Prices")
+        plt.title("Actual House Prices vs. Predict House Prices")
+        plt.show()
 
     return r2, rmse, mae
 
@@ -275,8 +283,13 @@ def kfolds(model, X, y, k):
     rmsePerf = []
     maePerf = []
 
+    random_list = list(range(0, k))
+
+    visualize_idx = random.choice(random_list)
+
 
     for i, (train_index, test_index) in enumerate(folds.split(X, y)):
+        visualize = False
         X_train = X[train_index]
         y_train = y[train_index]
 
@@ -289,7 +302,9 @@ def kfolds(model, X, y, k):
         X_test = X[test_index]
         y_test = y[test_index]
 
-        r2, rmse, mae = eval_performance(m, X_test, y_test)
+        if i == visualize_idx:
+            visualize = True
+        r2, rmse, mae = eval_performance(m, X_test, y_test, visualize=visualize)
         r2Perf.append(r2)
         rmsePerf.append(rmse)
         maePerf.append(mae)
@@ -339,7 +354,7 @@ def main():
     subsample = 1
     colsample = 0.7
 
-    best_model = xgb.XGBRegressor(n_estimators=100, max_depth=depth, eta=learning_rate, subsample=subsample, colsample_bytree=colsample)
+    best_model = xgb.XGBRegressor(n_estimators=1000, max_depth=depth, eta=learning_rate, subsample=subsample, colsample_bytree=colsample)
 
     # cv = RepeatedKFold(n_splits=5, n_repeats=3, random_state=42)
 
