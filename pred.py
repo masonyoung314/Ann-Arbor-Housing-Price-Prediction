@@ -55,9 +55,16 @@ def graph_data(data: npt.NDArray):
     plt.show()
 
 # Convert year-month-day to float of seconds since 1970
+# Also remove top 1% homes
 def date_to_float(df: pd.DataFrame) -> pd.DataFrame:
     df["sale_date"] = pd.to_datetime(df["sale_date"])
     df["sale_date"] = df["sale_date"].astype("int64") / 1e9
+
+    threshold = df["sale_price"].quantile(0.99)
+    df = df[df["sale_price"] < threshold]
+
+    lower = df["sale_price"].quantile(0.01)
+    df = df[df["sale_price"] > lower] 
 
     return df
 
@@ -320,8 +327,8 @@ def main():
     housing_pd = pd.read_csv("./housing.csv")
 
 
-    housing = housing_pd.to_numpy()
-    print(housing)
+    # housing = housing_pd.to_numpy()
+    # print(housing)
     # graph_data(housing)
     # print(housing_pd)
     # housing = cleanup_weird_vals(housing)
@@ -363,6 +370,11 @@ def main():
     # mae_scores = -cross_val_score(best_model, X, y, cv=cv, scoring='neg_mean_absolute_error')
     r2_scores, rmse_scores, mae_scores = kfolds(best_model, X, y, 5)
     print_score_info(r2_scores, rmse_scores, mae_scores)
+
+    median = np.median(y)
+    print(f"Median home price: {median}")
+    percentage_error = np.mean(mae_scores) / median
+    print(f"{percentage_error}% average error")
 
 
     # X_train, X_test, y_train, y_test = get_splits_nn(X, y)
